@@ -1,6 +1,6 @@
-icons = {'bhorse':'♘','whorse':'♞','bking':'♚','wking':'♔','bqueen':'♕','wqueen':'♛','bp':'♙','wp':'♟','bl':'♖','wl':'♜','weleph':'♝','beleph':'♗'}
+icons = {'whorse':'♘','bhorse':'♞','bking':'♚','wking':'♔','wqueen':'♕','bqueen':'♛','wp':'♙','bp':'♟','wl':'♖','bl':'♜','beleph':'♝','weleph':'♗'}
 class Nofigure():
-    btn.setText('')
+
     def moves(self, field, x, y):
         raise Exception('no figure')
 
