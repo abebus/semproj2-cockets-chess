@@ -1,6 +1,6 @@
-
+icons = {'bhorse':'♘','whorse':'♞','bking':'♚','wking':'♔','bqueen':'♕','wqueen':'♛','bp':'♙','wp':'♟','bl':'♖','wl':'♜','weleph':'♝','beleph':'♗'}
 class Nofigure():
-    side = Side.none
+    btn.setText('')
     def moves(self, field, x, y):
         raise Exception('no figure')
 
@@ -20,6 +20,7 @@ class Field:
 
     def whatside(self, x, y):
         return self.field[y][x].side
+
 
     def whattype(self, x, y):
         return self.field[y][x].type
