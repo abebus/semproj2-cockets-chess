@@ -1,4 +1,4 @@
-icons = {'whorse':'♘','bhorse':'♞','bking':'♚','wking':'♔','wqueen':'♕','bqueen':'♛','wp':'♙','bp':'♟','wl':'♖','bl':'♜','beleph':'♝','weleph':'♗'}
+icons = {'whorse':'♘','bhorse':'♞','wking':'♔','bking':'♚','wqueen':'♕','bqueen':'♛','wp':'♙','bp':'♟','wl':'♖','bl':'♜','weleph':'♗','beleph':'♝'}
 class Nofigure():
 
     def moves(self, field, x, y):
