@@ -34,6 +34,10 @@ class Chess(QMainWindow):
 
 
     def construct_field(self):
+        [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
+        [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
         self.ui._11.setText(icons['wl'])
         self.ui._21.setText(icons['whorse'])
         self.ui._31.setText(icons['weleph'])
@@ -57,11 +61,20 @@ class Chess(QMainWindow):
 
     @pyqtSlot(int, int)
     def variants(self, y, x):
+        # сначала чистим серые поля чтоб при нажатии на другую кнопку варианты хода менялись
+        [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
+        [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+        # тут просто берем иконку чтоб понять как ходить может
         txt = self.field[y][x].text()
         if txt == icons['wking']:
+            #тут закоменчу чист,далее не особо отличается
+            # делаем список с вариантами хода и сразу проверяем,что он в пределах поля
             vars_ = list(self.field[y + j][x + i] for j, i in
                      ((1, 1), (1, 0), (1, -1), (0, 1), (-1, -1), (-1, 0), (-1, 1))
                      if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
+            # тут списком проходим и смотрим чтоб не сходил на своих ребят
             for btn in vars_:
                 if btn.text() not in list(icons.values())[0:-1:2]:
                     btn.setStyleSheet('background-color:gray')
@@ -87,11 +100,18 @@ class Chess(QMainWindow):
                 if btn.text() not in list(icons.values())[1:-1:2]:
                     btn.setStyleSheet('background-color:gray')
         elif txt == icons['weleph']:
-            vars_ = list(self.field[y+i][x+i] for i in range(-7, 8)
-                         if 7 >= (x+i) >= 0 and 7 >= (y+i) >= 0 and y != (y+i) and x != (x+i)) + \
-                    list(self.field[y - i][x + i] for i in range(-7, 8)
-                         if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0 and y != (y + i) and x != (x + i))
-            for btn in vars_:
+            vars1_ = list(self.field[y+i][x+i] for i in range(-7, 8)
+                          if 7 >= (x+i) >= 0 and 7 >= (y+i) >= 0 and y != (y+i) and x != (x+i))
+            vars2_ = list(self.field[y - i][x + i] for i in range(-7, 8)
+                          if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0 and y != (y + i) and x != (x + i))
+            for btn in vars1_:
+                if btn.text() not in list(icons.values())[0:-1:2]:
+                    btn.setStyleSheet('background-color:gray')
+                    if btn.txt() in list(icons.values()[1:-1:2]):
+                        break
+                else:
+                    break
+            for btn in vars1_:
                 if btn.text() not in list(icons.values())[0:-1:2]:
                     btn.setStyleSheet('background-color:gray')
                     if btn.txt() in list(icons.values()[1:-1:2]):
