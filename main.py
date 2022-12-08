@@ -12,7 +12,10 @@ class Communication(QObject):
     dataSignal = pyqtSignal(int, int)
 
 
+
 class Chess(QMainWindow):
+    #global startx
+    #global starty
     def __init__(self):
         super(Chess, self).__init__()
         self.comm = Communication()
@@ -61,11 +64,14 @@ class Chess(QMainWindow):
 
     @pyqtSlot(int, int)
     def variants(self, y, x):
+        #print(y, x)
         # сначала чистим серые поля чтоб при нажатии на другую кнопку варианты хода менялись
-        [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
-         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
-        [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
-         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+        if self.field[y][x].text() != '':
+            [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
+             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
+            [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
+             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+        vars_ = []
         # тут просто берем иконку чтоб понять как ходить может
         txt = self.field[y][x].text()
         if txt == icons['wking']:
@@ -201,6 +207,28 @@ class Chess(QMainWindow):
                 or (btn.text() in list(icons.values())[0:-1:2] and btn != vars_[0]):
                     btn.setStyleSheet('background-color:gray')
 
+        if self.field[y][x].text() != '' and len(vars_) != 0:
+            Store.starty = y
+            Store.startx = x
+            Store.txt = txt
+            print(y, x)
+        if self.field[y][x].palette().button().color().name() == '#808080':
+            self.moveit(y, x)
+
+    def moveit(self, y, x):
+        [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
+        [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
+         if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+        self.field[y][x].setText(Store.txt)
+        self.field[Store.starty][Store.startx].setText('')
+
+
+class Store:
+    def __init__(self, x, y):
+        self.startx = x
+        self.starty = y
+        self.txt = txt
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
