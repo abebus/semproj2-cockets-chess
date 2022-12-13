@@ -1,40 +1,87 @@
 import sys
-import numpy as np
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QGridLayout
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QObject
-from threading import Thread
+import socket
+import pickle
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QThread
 from chess import Ui_MainWindow
 from models import icons
 import helper as h
 
 
-class Communication(QObject):
-    dataSignal = pyqtSignal(int, int)
+class BackendClient(QThread):
+    address = ("127.0.0.1", 5432)
 
+    def __init__(self, signal, name):
+        super().__init__()
+        self.name = name
+        self.signal = signal
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect(BackendClient.address)
+
+    def run(self):
+        while 1:
+            binary_data = self.sock.recv(1024)
+            if binary_data is None or not len(binary_data):
+                break
+            print(binary_data)
+            info = pickle.loads(binary_data)
+            #
+            print(info)
+            text = info.get('text')
+            data = info.get('data')  # for example
+
+            self.signal.emit(text)
+
+
+class Communication(QObject):
+    chess_Signal = pyqtSignal(int, int)
+    msg_signal = pyqtSignal(str)
 
 
 class Chess(QMainWindow):
-    #global startx
-    #global starty
+    # global startx
+    # global starty
     def __init__(self):
         super(Chess, self).__init__()
         self.comm = Communication()
-        self.comm.dataSignal.connect(self.variants)
+        self.comm.chess_Signal.connect(self.variants)
+        self.comm.msg_signal.connect(self.recv_msg)
+        #self.client = BackendClient(self.comm.msg_signal,name='a')
+        #self.client.start()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.field = [[self.ui._11, self.ui._21, self.ui._31, self.ui._41, self.ui._51, self.ui._61, self.ui._71, self.ui._81],
-                      [self.ui._12, self.ui._22, self.ui._32, self.ui._42, self.ui._52, self.ui._62, self.ui._72, self.ui._82],
-                      [self.ui._13, self.ui._23, self.ui._33, self.ui._43, self.ui._53, self.ui._63, self.ui._73, self.ui._83],
-                      [self.ui._14, self.ui._24, self.ui._34, self.ui._44, self.ui._54, self.ui._64, self.ui._74, self.ui._84],
-                      [self.ui._15, self.ui._25, self.ui._35, self.ui._45, self.ui._55, self.ui._65, self.ui._75, self.ui._85],
-                      [self.ui._16, self.ui._26, self.ui._36, self.ui._46, self.ui._56, self.ui._66, self.ui._76, self.ui._86],
-                      [self.ui._17, self.ui._27, self.ui._37, self.ui._47, self.ui._57, self.ui._67, self.ui._77, self.ui._87],
-                      [self.ui._18, self.ui._28, self.ui._38, self.ui._48, self.ui._58, self.ui._68, self.ui._78, self.ui._88]]
+        self.field = [
+            [self.ui._11, self.ui._21, self.ui._31, self.ui._41, self.ui._51, self.ui._61, self.ui._71, self.ui._81],
+            [self.ui._12, self.ui._22, self.ui._32, self.ui._42, self.ui._52, self.ui._62, self.ui._72, self.ui._82],
+            [self.ui._13, self.ui._23, self.ui._33, self.ui._43, self.ui._53, self.ui._63, self.ui._73, self.ui._83],
+            [self.ui._14, self.ui._24, self.ui._34, self.ui._44, self.ui._54, self.ui._64, self.ui._74, self.ui._84],
+            [self.ui._15, self.ui._25, self.ui._35, self.ui._45, self.ui._55, self.ui._65, self.ui._75, self.ui._85],
+            [self.ui._16, self.ui._26, self.ui._36, self.ui._46, self.ui._56, self.ui._66, self.ui._76, self.ui._86],
+            [self.ui._17, self.ui._27, self.ui._37, self.ui._47, self.ui._57, self.ui._67, self.ui._77, self.ui._87],
+            [self.ui._18, self.ui._28, self.ui._38, self.ui._48, self.ui._58, self.ui._68, self.ui._78, self.ui._88]]
         self.construct_field()
         for lst in range(len(self.field)):
             for btn in range(len(self.field[lst])):
                 self.field[lst][btn].clicked.connect(lambda state, x=btn, y=lst: self.variants(y, x))
+        self.logic()
+
+    def logic(self):
+        self.findChild(QPushButton, 'btn_send_msg').clicked.connect(self.send_msg)
+        # self.btn_clear.clicked.connect(self.clear_area)
+        self.ui.chat_history.setText("Welcome fgdghggh")
+
+    @pyqtSlot(str)
+    def recv_msg(self, text):
+        self.ui.chat_history.append(text)
+
+    def send_msg(self):
+        text: str = self.ui.lineEdit_2.text()
+        if len(text.strip()) > 0:
+            self.recv_msg(text)
+            self.ui.lineEdit_2.setText("")
+            # socket
+            # self.client.send(text)
 
     def construct_field(self):
         h.colorize(self)
@@ -61,7 +108,7 @@ class Chess(QMainWindow):
 
     @pyqtSlot(int, int)
     def variants(self, y, x):
-        #print(y, x)
+        # print(y, x)
         # сначала чистим серые поля чтоб при нажатии на другую кнопку варианты хода менялись
         if self.field[y][x].text() != '':
             [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
@@ -72,11 +119,11 @@ class Chess(QMainWindow):
         # тут просто берем иконку чтоб понять как ходить может
         txt = self.field[y][x].text()
         if txt == icons['wking']:
-            #тут закоменчу чист,далее не особо отличается
+            # тут закоменчу чист,далее не особо отличается
             # делаем список с вариантами хода и сразу проверяем,что он в пределах поля
             vars_ = list(self.field[y + j][x + i] for j, i in
-                     ((1, 1), (1, 0), (1, -1), (0, 1), (-1, -1), (-1, 0), (-1, 1))
-                     if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
+                         ((1, 1), (1, 0), (1, -1), (0, 1), (-1, -1), (-1, 0), (-1, 1))
+                         if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
             # тут списком проходим и смотрим чтоб не сходил на своих ребят
             for btn in vars_:
                 if btn.text() not in list(icons.values())[0::2]:
@@ -90,23 +137,23 @@ class Chess(QMainWindow):
                     btn.setStyleSheet('background-color:gray')
         elif txt == icons['whorse']:
             vars_ = list(self.field[y + j][x + i] for j, i in
-                     ((2, 1), (-2, 1), (1, -2), (1, 2), (-2, -1), (2, -1), (-1, 2), (-1, -2))
-                     if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
+                         ((2, 1), (-2, 1), (1, -2), (1, 2), (-2, -1), (2, -1), (-1, 2), (-1, -2))
+                         if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
             for btn in vars_:
                 if btn.text() not in list(icons.values())[0::2]:
                     btn.setStyleSheet('background-color:gray')
         elif txt == icons['bhorse']:
-            vars_ = list(self.field[y+j][x+i] for j, i in
+            vars_ = list(self.field[y + j][x + i] for j, i in
                          ((2, 1), (-2, 1), (1, -2), (1, 2), (-2, -1), (2, -1), (-1, 2), (-1, -2))
-                         if 7 >= (y+j) >= 0 and 7 >= (x+i) >= 0)
+                         if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
             for btn in vars_:
                 if btn.text() not in list(icons.values())[1::2]:
                     btn.setStyleSheet('background-color:gray')
         elif txt == icons['weleph']:
-            vars_ = [list(self.field[y+i][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0 and 7 >= (y+i) >= 0),
+            vars_ = [list(self.field[y + i][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0),
                      list(self.field[y - i][x + i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0 and 7 >= (y-i) >= 0),
+                          if 7 >= (x + i) >= 0 and 7 >= (y - i) >= 0),
                      list(self.field[y + i][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0 and 7 >= (y + i) >= 0),
                      list(self.field[y - i][x - i] for i in range(1, 8)
@@ -120,10 +167,10 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['beleph']:
-            vars_ = [list(self.field[y+i][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0 and 7 >= (y+i) >= 0),
+            vars_ = [list(self.field[y + i][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0),
                      list(self.field[y - i][x + i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0 and 7 >= (y-i) >= 0),
+                          if 7 >= (x + i) >= 0 and 7 >= (y - i) >= 0),
                      list(self.field[y + i][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0 and 7 >= (y + i) >= 0),
                      list(self.field[y - i][x - i] for i in range(1, 8)
@@ -137,10 +184,10 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['wl']:
-            vars_ = [list(self.field[y][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0),
+            vars_ = [list(self.field[y][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0),
                      list(self.field[y + i][x] for i in range(1, 8)
-                          if 7 >= (y+i) >= 0),
+                          if 7 >= (y + i) >= 0),
                      list(self.field[y][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0),
                      list(self.field[y - i][x] for i in range(1, 8)
@@ -154,10 +201,10 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['bl']:
-            vars_ = [list(self.field[y][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0),
+            vars_ = [list(self.field[y][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0),
                      list(self.field[y + i][x] for i in range(1, 8)
-                          if 7 >= (y+i) >= 0),
+                          if 7 >= (y + i) >= 0),
                      list(self.field[y][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0),
                      list(self.field[y - i][x] for i in range(1, 8)
@@ -171,10 +218,10 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['wqueen']:
-            vars_ = [list(self.field[y][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0),
+            vars_ = [list(self.field[y][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0),
                      list(self.field[y + i][x] for i in range(1, 8)
-                          if 7 >= (y+i) >= 0),
+                          if 7 >= (y + i) >= 0),
                      list(self.field[y][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0),
                      list(self.field[y - i][x] for i in range(1, 8)
@@ -196,10 +243,10 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['bqueen']:
-            vars_ = [list(self.field[y][x+i] for i in range(1, 8)
-                          if 7 >= (x+i) >= 0),
+            vars_ = [list(self.field[y][x + i] for i in range(1, 8)
+                          if 7 >= (x + i) >= 0),
                      list(self.field[y + i][x] for i in range(1, 8)
-                          if 7 >= (y+i) >= 0),
+                          if 7 >= (y + i) >= 0),
                      list(self.field[y][x - i] for i in range(1, 8)
                           if 7 >= (x - i) >= 0),
                      list(self.field[y - i][x] for i in range(1, 8)
@@ -221,18 +268,18 @@ class Chess(QMainWindow):
                         continue
                     break
         elif txt == icons['wp']:
-            vars_ = list(self.field[y+j][x+i] for j, i in ((1, 0), (1, 1), (1, -1))
+            vars_ = list(self.field[y + j][x + i] for j, i in ((1, 0), (1, 1), (1, -1))
                          if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0)
             for btn in vars_:
-                if (btn.text() not in list(icons.values())[0::2] and btn == vars_[0])\
-                or (btn.text() in list(icons.values())[1::2] and btn != vars_[0]):
+                if (btn.text() not in list(icons.values())[0::2] and btn == vars_[0]) \
+                        or (btn.text() in list(icons.values())[1::2] and btn != vars_[0]):
                     btn.setStyleSheet('background-color:gray')
         elif txt == icons['bp']:
-            vars_ = list(self.field[y+j][x+i] for j, i in ((-1, 0), (-1, -1), (-1, 1))
+            vars_ = list(self.field[y + j][x + i] for j, i in ((-1, 0), (-1, -1), (-1, 1))
                          if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0)
             for btn in vars_:
-                if (btn.text() not in list(icons.values())[1::2] and btn == vars_[0])\
-                or (btn.text() in list(icons.values())[0::2] and btn != vars_[0]):
+                if (btn.text() not in list(icons.values())[1::2] and btn == vars_[0]) \
+                        or (btn.text() in list(icons.values())[0::2] and btn != vars_[0]):
                     btn.setStyleSheet('background-color:gray')
 
         if self.field[y][x].text() != '' and len(vars_) != 0:
@@ -244,7 +291,7 @@ class Chess(QMainWindow):
 
     def moveit(self, y, x):
         h.colorize(self)
-        print('ok',self.field[y][x].text())
+        print('ok', self.field[y][x].text())
         self.field[y][x].setText(Store.txt)
         self.field[Store.starty][Store.startx].setText('')
 
