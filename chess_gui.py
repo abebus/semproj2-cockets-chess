@@ -69,8 +69,8 @@ class Chess(QMainWindow):
         self.show_emojis()
 
         # гуи парсит ютфные символы фигур и ставит картинку на кнопку
-        raster_demon = Thread(daemon=True, target=self.raster_figure)
-        raster_demon.start()
+        #raster_demon = Thread(daemon=True, target=self.raster_figure)
+        #raster_demon.start()
 
 
     def construct_field(self):
