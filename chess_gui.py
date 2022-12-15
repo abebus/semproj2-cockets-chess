@@ -10,14 +10,14 @@ from threading import Thread
 from time import sleep
 
 class EmojisWindow(QWidget):
+    emojis = []
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("EmojijLOLOL")
         self.main_grid = QGridLayout()
         self.setLayout(self.main_grid)
-        self.emojis = []
         self.populate()
-        self.logic()
 
     def populate(self):
         """
@@ -33,7 +33,7 @@ class EmojisWindow(QWidget):
             btn.setObjectName(emoji_name)
             btn.setIcon(QIcon(f'emojis/{emoji}'))
             btn.setIconSize(QSize(60, 60))
-            self.emojis.append(btn)
+            EmojisWindow.emojis.append(btn)
             self.main_grid.addWidget(btn, column, row)
             if row < row_width - 1:
                 row += 1
@@ -41,15 +41,8 @@ class EmojisWindow(QWidget):
                 row = 0
                 column += 1
 
-    def logic(self):
-        for btn in self.emojis:
-            btn.clicked.connect(lambda state, button=btn: self.picked_emoji_is(button))
 
-    @pyqtSlot()
-    def picked_emoji_is(self, btn):
-        return btn
-
-class LobbySelectorWidnow(QWidget):
+class LobbySelectorWindnow(QWidget):
     def __init__(self):
         super().__init__()
         ...
@@ -60,7 +53,7 @@ class Chess(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-
+        self.emojis = EmojisWindow.emojis
         font = QFont()
         font.setFamily(u'Arial')  # шрифт
         font.setPointSize(12)  # размер шрифта

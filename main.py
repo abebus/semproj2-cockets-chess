@@ -4,18 +4,21 @@ import pickle
 import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QThread
+from PyQt5.QtGui import QTextCursor
 from chess_gui import *
 from models import icons
 import helper as h
 from protocol import Protocol, asdict
 
+
 class BackendClient(QThread):
     address = ("127.0.0.1", 10000)
 
-    def __init__(self, signal, name):
+    def __init__(self, signal, emj_signal, name):
         super().__init__()
         self.name = name
         self.signal = signal
+        self.emoji = emj_signal
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(BackendClient.address)
@@ -33,22 +36,25 @@ class BackendClient(QThread):
             #
             print(info)
             text = info.get('text')
+            emoji = info.get('emoji')
 
             self.signal.emit(text)
+            self.emoji.emit(emoji)
 
-    def send(self, text):
+    def send(self, text='', emoji=''):
+        print(emoji, 'is emoji')
         # protocol = {"text": text,
         #             "from": self.name}
-        protocol = Protocol(text, self.name)
+        protocol = Protocol(author=self.name, text=text, emoji=emoji)
         protocol = asdict(protocol)
-        print('protocol',protocol)
+        print('protocol', protocol)
         self.sock.send(pickle.dumps(protocol))
 
 
 class Communication(QObject):
     chess_Signal = pyqtSignal(int, int)
     msg_signal = pyqtSignal(str)
-
+    emoji_signal = pyqtSignal(str)
 
 class Chess(Chess):
     # global startx
@@ -59,7 +65,8 @@ class Chess(Chess):
         self.name = 'user'
         self.comm.chess_Signal.connect(self.variants)
         self.comm.msg_signal.connect(self.recv_msg)
-        self.client = BackendClient(self.comm.msg_signal, self.name)
+        self.comm.emoji_signal.connect(self.recv_emoji)
+        self.client = BackendClient(self.comm.msg_signal, self.comm.emoji_signal, self.name)
         self.client.start()
         self.logic()
         for lst in range(len(self.field)):
@@ -68,6 +75,8 @@ class Chess(Chess):
 
     def logic(self):
         self.findChild(QPushButton, 'btn_send_msg').clicked.connect(self.send_msg)
+        for emoji_btn in self.emojis:
+            emoji_btn.clicked.connect(lambda state, emj=emoji_btn: self.send_emoji(emj))
         # self.btn_clear.clicked.connect(self.clear_area)
         self.ui.chat_history.setText(f"Welcome {self.name}")
 
@@ -81,6 +90,19 @@ class Chess(Chess):
             #self.recv_msg(text)
             self.ui.lineEdit_2.setText("")
             self.client.send(text)
+
+    def send_emoji(self, emoji):
+        print(emoji.objectName(), 'send')
+        self.client.send(emoji=emoji.objectName())
+
+    @pyqtSlot(str)
+    def recv_emoji(self, emoji):
+        print(emoji)
+        doc = self.ui.chat_history.document()
+        cursor = QTextCursor(doc)
+        cursor.keepPositionOnInsert()
+        print(f'emojis/{emoji}.jpg')
+        cursor.insertImage(f'emojis/{emoji}.jpg')
 
     @pyqtSlot(int, int)
     def variants(self, y, x):

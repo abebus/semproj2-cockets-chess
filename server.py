@@ -25,14 +25,13 @@ class ConnectedClient(Thread):
             text = f"[{from_name}]::{msg}"
             self.server.send(text)
 
-    send = BackendClient.send
-    # def send(self, text):
-    #     # protocol = {"text": text,
-    #     #             "from": self.name}
-    #     protocol = Protocol(text, self.name)
-    #     protocol = asdict(protocol)
-    #     print('protocol', protocol)
-    #     self.sock.send(pickle.dumps(protocol))
+    def send(self, text='', emoji=''):
+        # protocol = {"text": text,
+        #             "from": self.name}
+        protocol = Protocol(self.name, text, emoji)
+        protocol = asdict(protocol)
+        print('protocol', protocol)
+        self.sock.send(pickle.dumps(protocol))
 
     def recv(self):
         print('get')
