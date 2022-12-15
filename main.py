@@ -1,26 +1,16 @@
 import sys
 import socket
 import pickle
+import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QThread
 from chess_gui import *
 from models import icons
 import helper as h
-from dataclasses import dataclass, asdict
-from datetime import datetime
-
-
-@dataclass(frozen=True, slots=True)
-class Message:
-    author: str
-    text: str
-    path_to_emoji: str
-
-    time: datetime = datetime.now()
 
 
 class BackendClient(QThread):
-    address = ("127.0.0.1", 10101)  # (дефолтный) 5432 порт постгреса
+    address = ("127.0.0.1", 10000)
 
     def __init__(self, signal, name):
         super().__init__()
@@ -32,23 +22,25 @@ class BackendClient(QThread):
 
     def run(self):
         while 1:
+            print('1')
             binary_data = self.sock.recv(1024)
+            print('2')
             if binary_data is None or not len(binary_data):
+                print('3')
                 break
             print(binary_data)
             info = pickle.loads(binary_data)
             #
             print(info)
             text = info.get('text')
-            data = info.get('data')  # for example
 
             self.signal.emit(text)
 
-    def send(self, raw_text):
-        msg = Message(author=self.name, text=raw_text, path_to_emoji=EmojisWindow.picked_emoji_is())
-        print(msg)
-        self.sock.send(pickle.dumps(asdict(msg)))
-
+    def send(self, text):
+        protocol = {"text": text,
+                    "from": self.name}
+        print('protocol',protocol)
+        self.sock.send(pickle.dumps(protocol))
 
 
 class Communication(QObject):
@@ -62,21 +54,20 @@ class Chess(Chess):
     def __init__(self):
         super().__init__()
         self.comm = Communication()
+        self.name = 'user'
         self.comm.chess_Signal.connect(self.variants)
         self.comm.msg_signal.connect(self.recv_msg)
-        #self.client = BackendClient(self.comm.msg_signal,name='a')
-        #self.client.start()
+        self.client = BackendClient(self.comm.msg_signal, self.name)
+        self.client.start()
         self.logic()
         for lst in range(len(self.field)):
             for btn in range(len(self.field[lst])):
                 self.field[lst][btn].clicked.connect(lambda state, x=btn, y=lst: self.variants(y, x))
 
-
-
     def logic(self):
         self.findChild(QPushButton, 'btn_send_msg').clicked.connect(self.send_msg)
         # self.btn_clear.clicked.connect(self.clear_area)
-        self.ui.chat_history.setText("Welcome fgdghggh")
+        self.ui.chat_history.setText(f"Welcome {self.name}")
 
     @pyqtSlot(str)
     def recv_msg(self, text):
@@ -85,10 +76,9 @@ class Chess(Chess):
     def send_msg(self):
         text: str = self.ui.lineEdit_2.text()
         if len(text.strip()) > 0:
-            self.recv_msg(text)
+            #self.recv_msg(text)
             self.ui.lineEdit_2.setText("")
-            # socket
-            # self.client.send(text)
+            self.client.send(text)
 
     @pyqtSlot(int, int)
     def variants(self, y, x):
