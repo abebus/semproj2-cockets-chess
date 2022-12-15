@@ -6,10 +6,21 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QThread
 from chess_gui import *
 from models import icons
 import helper as h
+from dataclasses import dataclass, asdict
+from datetime import datetime
+
+
+@dataclass(frozen=True, slots=True)
+class Message:
+    author: str
+    text: str
+    path_to_emoji: str
+
+    time: datetime = datetime.now()
 
 
 class BackendClient(QThread):
-    address = ("127.0.0.1", 5432)
+    address = ("127.0.0.1", 10101)  # (дефолтный) 5432 порт постгреса
 
     def __init__(self, signal, name):
         super().__init__()
@@ -32,6 +43,12 @@ class BackendClient(QThread):
             data = info.get('data')  # for example
 
             self.signal.emit(text)
+
+    def send(self, raw_text):
+        msg = Message(author=self.name, text=raw_text, path_to_emoji=EmojisWindow.picked_emoji_is())
+        print(msg)
+        self.sock.send(pickle.dumps(asdict(msg)))
+
 
 
 class Communication(QObject):
