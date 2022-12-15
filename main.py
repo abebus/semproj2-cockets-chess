@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QThread
 from chess_gui import *
 from models import icons
 import helper as h
-
+from protocol import Protocol, asdict
 
 class BackendClient(QThread):
     address = ("127.0.0.1", 10000)
@@ -37,8 +37,10 @@ class BackendClient(QThread):
             self.signal.emit(text)
 
     def send(self, text):
-        protocol = {"text": text,
-                    "from": self.name}
+        # protocol = {"text": text,
+        #             "from": self.name}
+        protocol = Protocol(text, self.name)
+        protocol = asdict(protocol)
         print('protocol',protocol)
         self.sock.send(pickle.dumps(protocol))
 

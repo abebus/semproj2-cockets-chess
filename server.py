@@ -4,6 +4,7 @@ from time import sleep
 from threading import Thread
 
 import pickle
+from protocol import Protocol, asdict
 
 
 class ConnectedClient(Thread):
@@ -19,13 +20,15 @@ class ConnectedClient(Thread):
             print('yeeeeeeeeeeeeeeeeeeeeee')
             info = self.recv()
             msg = info.get('text')
-            from_name = info.get('from')
+            from_name = info.get('author')
             text = f"[{from_name}]::{msg}"
             self.server.send(text)
 
     def send(self, text):
-        protocol = {"text": text,
-                    "from": self.name}
+        # protocol = {"text": text,
+        #             "from": self.name}
+        protocol = Protocol(text, self.name)
+        protocol = asdict(protocol)
         print('protocol', protocol)
         self.sock.send(pickle.dumps(protocol))
 
@@ -52,6 +55,7 @@ class Server:
     def start_server(self):
         while 1:
             print('yeyeyeyeeyyeye')
+            print(self)
             client_socket, (ip, port) = self.sock.accept()
             print(f"Client ip={ip} [{port}] connected")
             connected_client = ConnectedClient(self, client_socket, ip, port)
