@@ -5,6 +5,7 @@ from threading import Thread
 
 import pickle
 from protocol import Protocol, asdict
+from main import BackendClient
 
 
 class ConnectedClient(Thread):
@@ -24,13 +25,14 @@ class ConnectedClient(Thread):
             text = f"[{from_name}]::{msg}"
             self.server.send(text)
 
-    def send(self, text):
-        # protocol = {"text": text,
-        #             "from": self.name}
-        protocol = Protocol(text, self.name)
-        protocol = asdict(protocol)
-        print('protocol', protocol)
-        self.sock.send(pickle.dumps(protocol))
+    send = BackendClient.send
+    # def send(self, text):
+    #     # protocol = {"text": text,
+    #     #             "from": self.name}
+    #     protocol = Protocol(text, self.name)
+    #     protocol = asdict(protocol)
+    #     print('protocol', protocol)
+    #     self.sock.send(pickle.dumps(protocol))
 
     def recv(self):
         print('get')
