@@ -82,7 +82,7 @@ class Chess(QMainWindow):
         self.construct_field()
 
         self.color_field()
-        self.test()
+        # self.test()
         self.emoji_window = EmojisWindow()
         self.show_emojis()
 

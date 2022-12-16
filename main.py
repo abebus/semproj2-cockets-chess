@@ -271,7 +271,7 @@ class Chess(Chess):
             self.moveit(y, x)
 
     def moveit(self, y, x):
-        h.colorize(self)
+        # h.colorize(self)
         print('ok', self.field[y][x].text())
         self.field[y][x].setText(Store.txt)
         self.field[Store.starty][Store.startx].setText('')
