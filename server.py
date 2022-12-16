@@ -20,8 +20,8 @@ class ConnectedClient(Thread):
         while 1:
             print('yeeeeeeeeeeeeeeeeeeeeee')
             info = self.recv()
-            msg = info.get('text')
-            from_name = info.get('author')
+            msg = info.text
+            from_name = info.author
             text = f"[{from_name}]::{msg}"
             self.server.send(text)
 

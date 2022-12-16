@@ -1,8 +1,5 @@
 icons = {'whorse':'♘','bhorse':'♞','wking':'♔','bking':'♚','wqueen':'♕','bqueen':'♛','wp':'♙','bp':'♟','wl':'♖','bl':'♜','weleph':'♗','beleph':'♝'}
-class Nofigure():
 
-    def moves(self, field, x, y):
-        raise Exception('no figure')
 
 class Field:
     def __init__(self):
@@ -37,7 +34,7 @@ def vars_(lst, x, y):
     return list(map(lambda i: (x+i[0], y+i[1]), lst))
 
 
-class Figure():
+class Figure:
     def __init__(self, color, icon):
         self.color = color
         self.icon = icon
@@ -48,6 +45,11 @@ class Figure():
     def kill(self, x, y):
         return self.moves(x, y)
 
+
+class Nofigure(Figure):
+
+    def moves(self, field, x, y):
+        raise Exception('no figure')
 
 class Horse(Figure):
     def __init__(self,color,icon):

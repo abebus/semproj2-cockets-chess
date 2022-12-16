@@ -87,8 +87,8 @@ class Chess(QMainWindow):
         self.show_emojis()
 
         # гуи парсит ютфные символы фигур и ставит картинку на кнопку
-        raster_demon = Thread(daemon=True, target=self.raster_figure)
-        raster_demon.start()
+        # raster_demon = Thread(daemon=True, target=self.raster_figure)
+        # raster_demon.start()
 
     def construct_field(self):
         self.ui._11.setText(icons['wl'])
@@ -142,7 +142,7 @@ class Chess(QMainWindow):
                             # btn.setText('')
                         if btn.text() == '':
                             btn.setIcon(QIcon(None))
-            sleep(0.2)
+            sleep(1)
             ...
 
 

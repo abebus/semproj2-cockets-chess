@@ -9,6 +9,7 @@ from models import icons
 import helper as h
 from protocol import Protocol, asdict
 
+
 class BackendClient(QThread):
     address = ("127.0.0.1", 10000)
 
@@ -18,7 +19,11 @@ class BackendClient(QThread):
         self.signal = signal
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(BackendClient.address)
+        try:
+            self.sock.connect(BackendClient.address)
+        except:
+            del self.sock
+            print('no serverv')
 
     def run(self):
         while 1:
@@ -32,16 +37,16 @@ class BackendClient(QThread):
             info = pickle.loads(binary_data)
             #
             print(info)
-            text = info.get('text')
+            text = info.text
 
             self.signal.emit(text)
 
     def send(self, text):
         # protocol = {"text": text,
         #             "from": self.name}
-        protocol = Protocol(text, self.name)
-        protocol = asdict(protocol)
-        print('protocol',protocol)
+        protocol = Protocol(text=text, author=self.name)
+        #protocol = asdict(protocol)
+        print('protocol', protocol)
         self.sock.send(pickle.dumps(protocol))
 
 
@@ -86,11 +91,11 @@ class Chess(Chess):
     def variants(self, y, x):
         # print(y, x)
         # сначала чистим серые поля чтоб при нажатии на другую кнопку варианты хода менялись
-        if self.field[y][x].text() != '':
-            [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
-             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
-            [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
-             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+        # if self.field[y][x].text() != '':
+        #     [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
+        #      if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
+        #     [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
+        #      if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
         vars_ = []
         # тут просто берем иконку чтоб понять как ходить может !!!!!1 С ЕБУЧЕЙ КНОПКИ БЕРЁМ ТЕКСТ НЕЕЕЕТ НИЗЯ ТАК
         txt = self.field[y][x].text()
@@ -270,6 +275,7 @@ class Chess(Chess):
         print('ok', self.field[y][x].text())
         self.field[y][x].setText(Store.txt)
         self.field[Store.starty][Store.startx].setText('')
+        self.color_field()
 
 
 class Store:
