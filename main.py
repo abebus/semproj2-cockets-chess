@@ -13,46 +13,64 @@ from protocol import Protocol, asdict
 class BackendClient(QThread):
     address = ("127.0.0.1", 10000)
 
-    def __init__(self, signal, name):
+    def __init__(self, chat_signal, go_signal, name):
         super().__init__()
         self.name = name
-        self.signal = signal
+        self.chsignal = chat_signal
+        self.gosignal = go_signal
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.sock.connect(BackendClient.address)
-        except:
-            del self.sock
-            print('no serverv')
+        self.sock.connect(BackendClient.address)
 
     def run(self):
         while 1:
-            print('1')
             binary_data = self.sock.recv(1024)
-            print('2')
             if binary_data is None or not len(binary_data):
-                print('3')
                 break
-            print(binary_data)
             info = pickle.loads(binary_data)
-            #
-            print(info)
-            text = info.text
+            if info is None:
+                break
+            match info.data_type:
+                case 'message':
+                    text = info.text
+                    self.chsignal.emit(text)
+                case 'emoji':
+                    ... # self.signalEMOJI.emit(emoji)
+                case 'coords':
+                    print('main-info:', info)
+                    y = info.get('y')
+                    x = info.get('x')
+                    self.gosignal.emit(y, x)
 
-            self.signal.emit(text)
-
-    def send(self, text):
+    def send(self, data_type, **kwargs):
         # protocol = {"text": text,
         #             "from": self.name}
-        protocol = Protocol(text=text, author=self.name)
+        print(data_type, kwargs)
+        match data_type:
+            case 'message':
+                protocol = Protocol(data_type=data_type, author=self.name, text=kwargs['text'])
+            case 'emoji':
+                protocol = Protocol(data_type=data_type, author=self.name, emoji=kwargs['emoji'])
+            case 'coords':
+                protocol = Protocol(data_type=data_type, author=self.name,
+                                    from_pos=kwargs['from_pos'],
+                                    to_pos=kwargs['to_pos'])  # цвет не надо уточнять, это сделается на стороне
+                                                                   # сервера, будет проверка ход валидный ваще нет,
+                                                                   # пусть клиент передаёт всё что захочет
+            case _:
+                protocol = None
+                print('!!!no protocol, empty or unimplemented button pressed ')
+
         #protocol = asdict(protocol)
         print('protocol', protocol)
-        self.sock.send(pickle.dumps(protocol))
+        if protocol is not None:
+            self.sock.send(pickle.dumps(protocol))
 
 
 class Communication(QObject):
-    chess_Signal = pyqtSignal(int, int)
+    vars_signal = pyqtSignal(int, int)
     msg_signal = pyqtSignal(str)
+    move_signal = pyqtSignal(int, int)
 
 
 class Chess(Chess):
@@ -62,9 +80,10 @@ class Chess(Chess):
         super().__init__()
         self.comm = Communication()
         self.name = 'user'
-        self.comm.chess_Signal.connect(self.variants)
+        self.comm.vars_signal.connect(self.variants)
         self.comm.msg_signal.connect(self.recv_msg)
-        self.client = BackendClient(self.comm.msg_signal, self.name)
+        self.comm.move_signal.connect(self.moveit)
+        self.client = BackendClient(self.comm.msg_signal, self.comm.move_signal, self.name)
         self.client.start()
         self.logic()
         for lst in range(len(self.field)):
@@ -85,7 +104,7 @@ class Chess(Chess):
         if len(text.strip()) > 0:
             #self.recv_msg(text)
             self.ui.lineEdit_2.setText("")
-            self.client.send(text)
+            self.client.send(data_type='message', author=self.name, text=text)
 
     @pyqtSlot(int, int)
     def variants(self, y, x):
@@ -271,11 +290,12 @@ class Chess(Chess):
             self.moveit(y, x)
 
     def moveit(self, y, x):
-        # h.colorize(self)
+        h.colorize(self)
         print('ok', self.field[y][x].text())
         self.field[y][x].setText(Store.txt)
         self.field[Store.starty][Store.startx].setText('')
         self.color_field()
+        self.client.send(data_type='coords', author=self.name, to_pos=(y, x), from_pos=(0, 0))
 
 
 class Store:

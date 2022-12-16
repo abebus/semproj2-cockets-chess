@@ -20,19 +20,40 @@ class ConnectedClient(Thread):
         while 1:
             print('yeeeeeeeeeeeeeeeeeeeeee')
             info = self.recv()
-            msg = info.text
-            from_name = info.author
-            text = f"[{from_name}]::{msg}"
-            self.server.send(text)
+            print(info)
+            match info.data_type:
+                case 'message':
+                    self.server.send(info.text)
+                case 'emoji':
+                    ...
+                case 'coords':
+                    self.server.send(info.from_pos)
 
     send = BackendClient.send
-    # def send(self, text):
+
+    # def send(self, data_type, **kwargs):
     #     # protocol = {"text": text,
     #     #             "from": self.name}
-    #     protocol = Protocol(text, self.name)
-    #     protocol = asdict(protocol)
+    #     match data_type:
+    #         case 'message':
+    #             protocol = Protocol(data_type=data_type, author=self.name, text=kwargs['text'])
+    #         case 'emoji':
+    #             protocol = Protocol(data_type=data_type, author=self.name, emoji=kwargs['emoji'])
+    #         case 'coords':
+    #             protocol = Protocol(data_type=data_type, author=self.name,
+    #                                 from_pos=kwargs['from_pos'],
+    #                                 to_pos=kwargs['to_pos'])  # цвет не надо уточнять, это сделается на стороне
+    #                                                                # сервера, будет проверка ход валидный ваще нет,
+    #                                                                # пусть клиент передаёт всё что захочет
+    #         case _:
+    #             protocol = None
+    #             print(kwargs)
+    #             print('!!!no protocol, empty or unimplemented button pressed ')
+    #
+    #     #protocol = asdict(protocol)
     #     print('protocol', protocol)
-    #     self.sock.send(pickle.dumps(protocol))
+    #     if protocol is not None:
+    #         self.sock.send(pickle.dumps(protocol))
 
     def recv(self):
         print('get')
@@ -52,6 +73,7 @@ class Server:
 
     def send(self, text):
         for client in self.clients:
+            print(client)
             client.send(text)
 
     def start_server(self):
