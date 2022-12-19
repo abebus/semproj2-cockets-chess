@@ -1,64 +1,60 @@
+import random
 import socket
 from time import sleep
 
 from threading import Thread
 
 import pickle
-from protocol import Protocol, asdict
-from main import BackendClient
 
 
 class ConnectedClient(Thread):
-    def __init__(self, server, client_socket, ip, port):
+    def __init__(self, server, client_socket, ip, port, color, name):
         super().__init__()
         self.sock = client_socket
         self.server = server
         self.ip = ip
         self.port = port
+        self.color = color
+        self.name = name
 
     def run(self):
         while 1:
-            print('yeeeeeeeeeeeeeeeeeeeeee')
             info = self.recv()
-            print(info)
-            match info.data_type:
-                case 'message':
-                    self.server.send(info.text)
-                case 'emoji':
-                    ...
-                case 'coords':
-                    self.server.send(info.from_pos)
+            if len(info) == 1:
+                msg = info.get('text')
+                name = self.name
+                text = f"[{name}]::{msg}"
+                self.server.send(text)
+            elif len(info) == 2:
+                y = info.get('y')
+                x = info.get('x')
+                color = self.color
+                self.server.send(y, x, color)
+            elif len(info) == 5:
+                a = info.get('a')
+                b = info.get('b')
+                y = info.get('y')
+                x = info.get('x')
+                txt = info.get('txt')
+                self.server.send(a, b, y, x, txt)
 
-    send = BackendClient.send
-
-    # def send(self, data_type, **kwargs):
-    #     # protocol = {"text": text,
-    #     #             "from": self.name}
-    #     match data_type:
-    #         case 'message':
-    #             protocol = Protocol(data_type=data_type, author=self.name, text=kwargs['text'])
-    #         case 'emoji':
-    #             protocol = Protocol(data_type=data_type, author=self.name, emoji=kwargs['emoji'])
-    #         case 'coords':
-    #             protocol = Protocol(data_type=data_type, author=self.name,
-    #                                 from_pos=kwargs['from_pos'],
-    #                                 to_pos=kwargs['to_pos'])  # цвет не надо уточнять, это сделается на стороне
-    #                                                                # сервера, будет проверка ход валидный ваще нет,
-    #                                                                # пусть клиент передаёт всё что захочет
-    #         case _:
-    #             protocol = None
-    #             print(kwargs)
-    #             print('!!!no protocol, empty or unimplemented button pressed ')
-    #
-    #     #protocol = asdict(protocol)
-    #     print('protocol', protocol)
-    #     if protocol is not None:
-    #         self.sock.send(pickle.dumps(protocol))
+    def send(self, *args):
+        print('send', len(args), args)
+        if len(args) == 1:
+            protocol = {"text": args[0]}
+            self.sock.send(pickle.dumps(protocol))
+        elif len(args) == 3:
+            protocol = {"y": args[0], "x": args[1],
+                        "color": args[2]}
+            self.sock.send(pickle.dumps(protocol))
+        elif len(args) == 5:
+            protocol = {"a": args[0], "b": args[1], "y": args[2], "x": args[3], "txt": args[4]}
+            self.sock.send(pickle.dumps(protocol))
 
     def recv(self):
-        print('get')
         obj = self.sock.recv(1024)
         info = pickle.loads(obj)
+        print('recv-info:', info)
         return info
 
 
@@ -70,22 +66,28 @@ class Server:
         self.sock.bind(address)
         self.sock.listen(2)
         self.clients = set()
+        self.colors = set()
 
-    def send(self, text):
+    def send(self, *args):
         for client in self.clients:
-            print(client)
-            client.send(text)
+            if len(args) == 1:
+                client.send(args[0])
+            elif len(args) == 3:
+                client.send(args[0], args[1], args[2])
+            elif len(args) == 5:
+                client.send(args[0], args[1], args[2], args[3], args[4])
 
     def start_server(self):
         while 1:
-            print('yeyeyeyeeyyeye')
-            print(self)
             client_socket, (ip, port) = self.sock.accept()
             print(f"Client ip={ip} [{port}] connected")
-            connected_client = ConnectedClient(self, client_socket, ip, port)
+            if 0 not in self.colors:
+                connected_client = ConnectedClient(self, client_socket, ip, port, 0, 'user1')
+                self.colors.add(0)
+            else:
+                connected_client = ConnectedClient(self, client_socket, ip, port, 1, 'user2')
             connected_client.start()
             self.clients.add(connected_client)
-            # welcome msg because argment list is empty
 
 
 address = ("127.0.0.1", 10000)
