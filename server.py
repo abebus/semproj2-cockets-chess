@@ -36,10 +36,12 @@ class ConnectedClient(Thread):
                 y = info.get('y')
                 x = info.get('x')
                 txt = info.get('txt')
-                self.server.send(a, b, y, x, txt)
+                color = self.color
+                print('informasion',self.color, self.name)
+                self.server.send(a, b, y, x, txt, color)
 
     def send(self, *args):
-        print('send', len(args), args)
+        print('send', len(args), args, '\n\n')
         if len(args) == 1:
             protocol = {"text": args[0]}
             self.sock.send(pickle.dumps(protocol))
@@ -47,8 +49,10 @@ class ConnectedClient(Thread):
             protocol = {"y": args[0], "x": args[1],
                         "color": args[2]}
             self.sock.send(pickle.dumps(protocol))
-        elif len(args) == 5:
-            protocol = {"a": args[0], "b": args[1], "y": args[2], "x": args[3], "txt": args[4]}
+        elif len(args) == 6:
+            protocol = {"a": args[0], "b": args[1],
+                        "y": args[2], "x": args[3],
+                        "txt": args[4], "color": args[5]}
             self.sock.send(pickle.dumps(protocol))
 
     def recv(self):
@@ -74,8 +78,8 @@ class Server:
                 client.send(args[0])
             elif len(args) == 3:
                 client.send(args[0], args[1], args[2])
-            elif len(args) == 5:
-                client.send(args[0], args[1], args[2], args[3], args[4])
+            elif len(args) == 6:
+                client.send(args[0], args[1], args[2], args[3], args[4], args[5])
 
     def start_server(self):
         while 1:
@@ -86,9 +90,14 @@ class Server:
                 self.colors.add(0)
             else:
                 connected_client = ConnectedClient(self, client_socket, ip, port, 1, 'user2')
-            connected_client.start()
-            self.clients.add(connected_client)
+            print('clients', len(self.clients))
 
+                #connected_client.start()
+            self.clients.add(connected_client)
+            if len(self.clients) == 2:
+                for client in self.clients:
+                    client.start()
+                    print(client.color)
 
 address = ("127.0.0.1", 10000)
 server = Server(address)

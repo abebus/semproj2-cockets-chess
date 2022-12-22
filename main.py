@@ -30,7 +30,6 @@ class BackendClient(QThread):
             info = pickle.loads(binary_data)
             print('info:', info)
             if len(info) == 1:
-                print('main-info:', info)
                 text = info.get('text')
                 self.chsignal.emit(text)
             elif len(info) == 3:
@@ -38,14 +37,14 @@ class BackendClient(QThread):
                 y = info.get('y')
                 color = info.get('color')
                 self.varsignal.emit(y, x, color)
-            elif len(info) == 5:
-                print('main-info:', info)
+            elif len(info) == 6:
                 a = info.get('a')
                 b = info.get('b')
                 y = info.get('y')
                 x = info.get('x')
                 txt = info.get('txt')
-                self.gosignal.emit(a, b, y, x, txt)
+                color = info.get('color')
+                self.gosignal.emit(a, b, y, x, txt, color)
 
     def send(self, *args):
         print('len args:', len(args), args)
@@ -66,7 +65,7 @@ class Communication(QObject):
     pre_vars_signal = pyqtSignal(int, int)
     vars_signal = pyqtSignal(int, int, int)
     msg_signal = pyqtSignal(str)
-    move_signal = pyqtSignal(int, int, int, int, str)
+    move_signal = pyqtSignal(int, int, int, int, str, int)
 
 
 class Chess(Chess):
@@ -110,23 +109,20 @@ class Chess(Chess):
 
     @pyqtSlot(int, int, int)
     def variants(self, y, x, color):
-        # сначала чистим серые поля чтоб при нажатии на другую кнопку варианты хода менялись
+        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() in list(icons.values()):
+            self.client.send(self.a, self.b, y, x, self.c)
         if self.field[y][x].text() != '':
             [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
              if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
             [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
              if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
         vars_ = []
-        # тут просто берем иконку чтоб понять как ходить может !!!!!1 С ЕБУЧЕЙ КНОПКИ БЕРЁМ ТЕКСТ НЕЕЕЕТ НИЗЯ ТАК
         txt = self.field[y][x].text()
         if color == 0:
             if txt == icons['wking']:
-                # тут закоменчу чист,далее не особо отличается
-                # делаем список с вариантами хода и сразу проверяем,что он в пределах поля
                 vars_ = list(self.field[y + j][x + i] for j, i in
                              ((1, 1), (1, 0), (1, -1), (0, 1), (-1, -1), (-1, 0), (-1, 1))
                              if 7 >= (y + j) >= 0 and 7 >= (x + i) >= 0)
-                # тут списком проходим и смотрим чтоб не сходил на своих ребят
                 for btn in vars_:
                     if btn.text() not in list(icons.values())[0::2]:
                         btn.setStyleSheet('background-color:gray')
@@ -200,7 +196,7 @@ class Chess(Chess):
                 vars_ = list(self.field[y + j][x + i] for j, i in ((1, 0), (1, 1), (1, -1))
                              if 7 >= (x + i) >= 0 and 7 >= (y + i) >= 0)
                 for btn in vars_:
-                    if (btn.text() not in list(icons.values())[0::2] and btn == vars_[0]) \
+                    if (btn.text() not in list(icons.values())[0::2] and btn.text() == "" and btn == vars_[0]) \
                             or (btn.text() in list(icons.values())[1::2] and btn != vars_[0]):
                         btn.setStyleSheet('background-color:gray')
         else:
@@ -288,22 +284,26 @@ class Chess(Chess):
             self.a = y
             self.b = x
             self.c = txt
-        if self.field[y][x].palette().button().color().name() == '#808080':
+        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() == "":
             self.client.send(self.a, self.b, y, x, self.c)
 
-    @pyqtSlot(int, int, int, int, str)
-    def moveit(self, a, b, y, x, txt):
+    @pyqtSlot(int, int, int, int, str, int)
+    def moveit(self, a, b, y, x, txt, color):
         print('woooooooooooooooooooooooooooow')
         h.colorize(self)
-        self.field[y][x].setText(txt)
-        self.field[a][b].setText('')
-
-
-class Store:
-    def __init__(self, x, y, txt):
-        self.startx = x
-        self.starty = y
-        self.txt = txt
+        print('text',list(icons.keys())[list(icons.values()).index(txt)])
+        if txt in list(icons.values())[0::2] and color == 0:
+            print('i feel good', color)
+            self.field[y][x].setText(txt)
+            self.field[a][b].setText('')
+            return 0
+        elif txt in list(icons.values())[1::2] and color == 1:
+            print('i feel bad')
+            self.field[y][x].setText(txt)
+            self.field[a][b].setText('')
+            return 0
+        else:
+            return 0
 
 
 if __name__ == '__main__':
