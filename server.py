@@ -30,6 +30,10 @@ class ConnectedClient(Thread):
                 x = info.get('x')
                 color = self.color
                 self.server.send(y, x, color)
+            elif len(info) == 3:
+                text = info.get('text')
+                a = ''
+                self.server.send(text, a)
             elif len(info) == 5:
                 a = info.get('a')
                 b = info.get('b')
@@ -44,6 +48,9 @@ class ConnectedClient(Thread):
         print('send', len(args), args, '\n\n')
         if len(args) == 1:
             protocol = {"text": args[0]}
+            self.sock.send(pickle.dumps(protocol))
+        elif len(args) == 2:
+            protocol = {"text": args[0], "": ""}
             self.sock.send(pickle.dumps(protocol))
         elif len(args) == 3:
             protocol = {"y": args[0], "x": args[1],
@@ -76,6 +83,8 @@ class Server:
         for client in self.clients:
             if len(args) == 1:
                 client.send(args[0])
+            elif len(args) == 2:
+                client.send(args[0], '')
             elif len(args) == 3:
                 client.send(args[0], args[1], args[2])
             elif len(args) == 6:

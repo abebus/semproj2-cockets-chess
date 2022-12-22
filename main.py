@@ -12,12 +12,13 @@ import helper as h
 class BackendClient(QThread):
     address = ("127.0.0.1", 10000)
 
-    def __init__(self, chat_signal,varsignal, go_signal, name):
+    def __init__(self, chat_signal,varsignal, go_signal, end, name):
         super().__init__()
         self.name = name
         self.chsignal = chat_signal
         self.varsignal = varsignal
         self.gosignal = go_signal
+        self.end = end
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(BackendClient.address)
@@ -32,6 +33,9 @@ class BackendClient(QThread):
             if len(info) == 1:
                 text = info.get('text')
                 self.chsignal.emit(text)
+            elif len(info) == 2:
+                text = info.get('text')
+                self.end.emit((text,),'','')
             elif len(info) == 3:
                 x = info.get('x')
                 y = info.get('y')
@@ -54,6 +58,9 @@ class BackendClient(QThread):
         elif len(args) == 2:
             protocol = {"y": args[0], "x": args[1]}
             self.sock.send(pickle.dumps(protocol))
+        elif len(args) == 3:
+            protocol = {"text": args[0][0], " ": "", "": ""}
+            self.sock.send(pickle.dumps(protocol))
         elif len(args) == 5:
             protocol = {"a": args[0], "b": args[1],
                         "y": args[2], "x": args[3],
@@ -66,6 +73,7 @@ class Communication(QObject):
     vars_signal = pyqtSignal(int, int, int)
     msg_signal = pyqtSignal(str)
     move_signal = pyqtSignal(int, int, int, int, str, int)
+    end = pyqtSignal(tuple, str, str)
 
 
 class Chess(Chess):
@@ -82,7 +90,8 @@ class Chess(Chess):
         self.comm.msg_signal.connect(self.recv_msg)
         self.comm.move_signal.connect(self.moveit)
         self.comm.pre_vars_signal.connect(self.pre_vars)
-        self.client = BackendClient(self.comm.msg_signal, self.comm.vars_signal, self.comm.move_signal, self.name)
+        self.comm.end.connect(self.end_game)
+        self.client = BackendClient(self.comm.msg_signal, self.comm.vars_signal, self.comm.move_signal, self.comm.end, self.name)
         self.client.start()
         self.logic()
         for lst in range(len(self.field)):
@@ -109,13 +118,12 @@ class Chess(Chess):
 
     @pyqtSlot(int, int, int)
     def variants(self, y, x, color):
-        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() in list(icons.values()):
+        if self.field[y][x].palette().button().color().name() == '#808080' and color == 0 and self.field[y][x].text() in list(icons.values())[1::2]:
+            self.client.send(self.a, self.b, y, x, self.c)
+        if self.field[y][x].palette().button().color().name() == '#808080' and color == 1 and self.field[y][x].text() in list(icons.values())[0::2]:
             self.client.send(self.a, self.b, y, x, self.c)
         if self.field[y][x].text() != '':
-            [self.field[i][j].setStyleSheet('background-color:#f2f2f2') for i in range(0, 8) for j in range(0, 8)
-             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 == j % 2]
-            [self.field[i][j].setStyleSheet('background-color: #404040') for i in range(0, 8) for j in range(0, 8)
-             if 7 >= i >= 0 and 7 >= j >= 0 and i % 2 != j % 2]
+            h.colorize(self)
         vars_ = []
         txt = self.field[y][x].text()
         if color == 0:
@@ -284,14 +292,18 @@ class Chess(Chess):
             self.a = y
             self.b = x
             self.c = txt
-        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() == "":
+        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() == "" \
+                and color == 0 and self.field[self.a][self.b].text() in list(icons.values())[0::2]:
+            self.client.send(self.a, self.b, y, x, self.c)
+        if self.field[y][x].palette().button().color().name() == '#808080' and self.field[y][x].text() == "" \
+                and color == 1 and self.field[self.a][self.b].text() in list(icons.values())[1::2]:
             self.client.send(self.a, self.b, y, x, self.c)
 
     @pyqtSlot(int, int, int, int, str, int)
     def moveit(self, a, b, y, x, txt, color):
-        print('woooooooooooooooooooooooooooow')
         h.colorize(self)
-        print('text',list(icons.keys())[list(icons.values()).index(txt)])
+        if self.field[y][x].text() in list(icons.values())[2:4]:
+            self.client.send((self.field[y][x].text(),), '', '')
         if txt in list(icons.values())[0::2] and color == 0:
             self.field[y][x].setText(txt)
             self.field[a][b].setText('')
@@ -302,6 +314,18 @@ class Chess(Chess):
             return 0
         else:
             return 0
+
+    @pyqtSlot(tuple, str, str)
+    def end_game(self,tup):
+        txt = tup[0]
+        for lst in range(len(self.field)):
+            for btn in range(len(self.field[lst])):
+                self.field[lst][btn].setText("")
+                h.construct_field(self)
+        if txt == list(icons.values())[2]:
+            self.client.send('User2 wins')
+        elif txt == list(icons.values())[3]:
+            self.client.send('User1 wins')
 
 
 if __name__ == '__main__':
