@@ -293,12 +293,10 @@ class Chess(Chess):
         h.colorize(self)
         print('text',list(icons.keys())[list(icons.values()).index(txt)])
         if txt in list(icons.values())[0::2] and color == 0:
-            print('i feel good', color)
             self.field[y][x].setText(txt)
             self.field[a][b].setText('')
             return 0
         elif txt in list(icons.values())[1::2] and color == 1:
-            print('i feel bad')
             self.field[y][x].setText(txt)
             self.field[a][b].setText('')
             return 0
